@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { PageTitleComponent } from '../page-title/page-title.component';
+import { ProductService, Product } from '../../product.service';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -11,28 +12,36 @@ import { RouterLink } from '@angular/router';
   styleUrl: './checkout.component.css'
 })
 export class CheckoutComponent {
-  shippingCost: number = 0;
-  paymentCost: number = 0;
-  subtotal: number = 0;
-  total: number = 0;
+ 
+  cart: Product[] = [];
+  totalPrice = 0;
+
+  constructor(private productService: ProductService) {}
 
   ngOnInit(): void {
-    this.calculateTotal();
+    this.productService.cartObservable.subscribe(cart => {
+      this.cart = cart;
+      this.updateTotalPrice();
+    });
+    this.productService.loadCart();
   }
 
-  onShippingChange(event: Event): void {
-    const selectElement = event.target as HTMLSelectElement;
-    this.shippingCost = parseFloat(selectElement.value) || 0;
-    this.calculateTotal();
+  updateTotalPrice(): void {
+    this.totalPrice = this.cart.reduce((total, product) => total + (product.price * (product.quantity || 0)), 0);
   }
 
-  onPaymentChange(event: Event): void {
-    const selectElement = event.target as HTMLSelectElement;
-    this.paymentCost = parseFloat(selectElement.value) || 0;
-    this.calculateTotal();
+  updateCart(): void {
+    this.cart.forEach(product => {
+      const quantityInput = document.querySelector(`input[data-product-id="${product.id}"]`) as HTMLInputElement;
+      if (quantityInput) {
+        product.quantity = parseInt(quantityInput.value);
+      }
+    });
+    this.productService.updateCart();
   }
 
-  calculateTotal(): void {
-    this.total = this.subtotal + this.shippingCost + this.paymentCost;
+  removeCartItem(productId: number): void {
+    this.productService.removeFromCart(productId);
+    this.updateTotalPrice();
   }
 }
